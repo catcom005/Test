@@ -2,32 +2,44 @@ module.exports = {
   env: {
     browser: true,
     es2021: true,
+    jest: true,
+    node: true,
   },
   extends: [
-    "airbnb",
-    "airbnb-typescript",
-    "airbnb/hooks",
-    "plugin:react/recommended",
-    "plugin:@typescript-eslint/recommended",
+    'eslint:recommended',
+    'plugin:react/recommended',
+    'plugin:@typescript-eslint/recommended',
+    'prettier',
   ],
-  overrides: [
-    {
-      env: {
-        node: true,
-      },
-      files: [".eslintrc.{js,cjs}"],
-      parserOptions: {
-        sourceType: "script",
-      },
-    },
-  ],
-  parser: "@typescript-eslint/parser",
+  overrides: [],
+  parser: '@typescript-eslint/parser',
   parserOptions: {
-    ecmaVersion: "latest",
-    sourceType: "module",
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    project: './tsconfig.json',
   },
-  plugins: ["@typescript-eslint", "react"],
+  plugins: ['react', 'react-hooks', '@typescript-eslint', 'prettier'],
   rules: {
-    'react/react-in-jsx-scope': 0,
+    'react/react-in-jsx-scope': 'off',
+    camelcase: 'error',
+    'spaced-comment': 'error',
+    quotes: ['error', 'single'],
+    'no-duplicate-imports': 'error',
+    'import/no-extraneous-dependencies': [
+      'off',
+      {
+        devDependencies: false,
+        optionalDependencies: false,
+        peerDependencies: false,
+      },
+    ],
+  },
+  settings: {
+    react: {
+      version: 'detect',
+    },
+    'import/resolver': {
+      typescript: {},
+    },
   },
 };
