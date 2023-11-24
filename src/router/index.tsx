@@ -3,9 +3,9 @@ import DemoPage from './demo-page';
 import App from '../App';
 
 export const router = createBrowserRouter([
-    ...DemoPage,
-    {
-        path: '/',
-        element: <App />
-    }
+  ...DemoPage,
+  {
+    path: '/',
+    element: <App />,
+  },
 ]);

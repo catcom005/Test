@@ -1,10 +1,10 @@
 import Demo from '../../pages/demo-page/Demo';
 
 const DemoPage = [
-    {
-        path: '/demo',
-        element: <Demo />,
-    },
-]
+  {
+    path: '/demo',
+    element: <Demo />,
+  },
+];
 
-export default DemoPage
+export default DemoPage;
