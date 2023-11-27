@@ -8,15 +8,15 @@ function App() {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate('/demo')
-  }
+    navigate('/demo');
+  };
 
   return (
     <div>
       <p>
         User: {user.name}, Age: {user.age}
       </p>
-      <PrimaryButton title="Demo" onClick={() => handleClick()} id="demo_button" />
+      <PrimaryButton title="Demo" onClick={() => handleClick()} />
     </div>
   );
 }
