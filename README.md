@@ -1,22 +1,32 @@
-npm install -g yarn
+## Docs
 
-#install dependencies
-yarn
+- install yarn
 
-#add dependencies
-yarn add [dependencies]
+  - npm i -g yarn
 
-#add dev dependencies
-yarn add -dev [dependencies]
+- install dependencies
 
-#lint
-yarn lint
+  - yarn
 
-#lint fix
-yarn lint:fix
+- add dependencies
 
-#format
-yarn format
+  - yarn add [dependencies]
 
-#run localhost
-yarn dev
+- add dev dependencies
+
+  - yarn add --dev [dependencies]
+
+- run local host
+
+  - yarn dev
+
+- run lint
+
+  - yarn lint
+
+- run lint fix options
+
+  - yarn lint:fix
+
+- run format
+  - yarn format
