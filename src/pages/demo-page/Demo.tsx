@@ -13,7 +13,6 @@ const Demo = () => {
     navigate('/');
   };
 
-
   return (
     <div>
       <button onClick={() => handleClick()}>Increase Age</button>
