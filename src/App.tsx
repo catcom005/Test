@@ -1,6 +1,6 @@
 import { useAtom } from 'jotai';
-import { userAtom } from './container/stores/demo/DemoStore';
-import PrimaryButton from './components/button/PrimaryButton';
+import { userAtom } from '@/container/stores/demo/DemoStore';
+import PrimaryButton from '@/components/button/PrimaryButton';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
