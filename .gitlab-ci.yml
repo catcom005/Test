@@ -1,0 +1,73 @@
+include:
+ - local: config/gitlab-anchor.yml
+ - local: config/variables.yml
+
+default:
+  tags:
+    - gitlab-org-docker
+
+stages:
+ - validate_dev
+ - validate_staging
+ - validate_prod
+ - build_to_dev
+ - build_to_staging
+ - build_to_prod
+ - code_deliver_to_dev
+ - code_deliver_to_staging
+ - code_deliver_to_prod
+
+validate_dev:
+  extends: .tag_validate_dev
+  only:
+    - develop
+
+validate_staging:
+  extends: .tag_validate_staging
+  only:
+    - staging
+
+validate_prod:
+  extends: .tag_validate_prod
+  only:
+    - master
+
+build_to_dev:
+  extends: .build_to_dev
+  needs: ["validate_dev"]
+  only:
+    - develop
+
+build_to_staging:
+  extends: .build_to_staging
+  needs: ["validate_staging"]
+  only:
+    - staging
+
+build_to_prod:
+  extends: .build_to_prod
+  needs: ["validate_prod"]
+  only:
+    - master
+
+code_deliver_to_dev:
+  extends: .code_deliver_to_dev
+  needs: ["build_to_dev"]
+  only:
+    - develop
+
+code_deliver_to_staging:
+  extends: .code_deliver_to_staging
+  needs: ["build_to_staging"]
+  only:
+    - staging
+
+code_deliver_to_prod:
+  extends: .code_deliver_to_prod
+  needs: ["build_to_prod"]
+  only:
+    - master
+  when: manual
+
+
+

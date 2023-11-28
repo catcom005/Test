@@ -1,0 +1,16 @@
+variables:
+  # AWS
+  REGISTRY: 345822916006.dkr.ecr.ap-southeast-1.amazonaws.com
+  REPO_NAME: lightremitagent
+  TAG_NAME: $CI_COMMIT_BRANCH-
+  TAG: ''
+  STAGING_TAG_NAME: $CI_COMMIT_BRANCH-
+  #STAGING_TAG: $CI_COMMIT_SHORT_SHA
+  STAGING_TAG: ''
+  PROD_TAG_NAME: prod-
+  PROD_TAG: v0.1.18
+  # ECS config
+  TASK_FAMILY: lightremit-agent
+  ECS_CLUSTER: lightremit
+  SERVICE_NAME: lightremit-agent
+  ENVPATH: .env

@@ -1,0 +1,246 @@
+.tag_validate_dev:
+  stage: validate_dev
+  image: alpine
+  script:
+    - apk --no-cache add git
+    - git init
+    - apk add bash
+    - bash ./date.sh
+    # Check tag version already exist
+    - >
+      if [ $(git tag -l "$TAG") ]; then  
+        echo "TAG $TAG is already exist" 
+        exit 1
+      else
+        echo "Validate completed"
+        exit 0 
+      fi
+  artifacts:
+    paths:
+      - build_artifact.txt
+
+.tag_validate_staging:
+  stage: validate_staging
+  image: alpine
+  script:
+    - apk --no-cache add git
+    - git init
+    - git clone https://${GIT_USR}:${GIT_PWD}@gitlab.com/DevOps_Lightnet_Team/lightbit-api.git
+    - apk add bash
+    - bash ./date.sh
+    - cd "$WORKDIR_STAGING"
+    # Check tag version already exist
+    - >
+      if [ $(git tag -l "$STAGING_TAG") ]; then  
+        echo "TAG $STAGING_TAG is already exist" 
+        exit 1
+      else
+        echo "Validate completed"
+        exit 0 
+      fi
+  artifacts:
+    paths:
+      - build_artifact.txt
+
+.tag_validate_prod:
+  stage: validate_prod
+  image: alpine
+  script:
+    - apk --no-cache add git
+    - git clone https://${GIT_USR}:${GIT_PWD}@gitlab.com/DevOps_Lightnet_Team/lightbit-api.git
+    - cd $WORKDIR_PROD
+    # Check tag version already exist
+    - >
+      if [ $(git tag -l "$PROD_TAG") ]; then  
+        echo "TAG $PROD_TAG is already exist" 
+        exit 1
+      else
+        echo "Validate completed"
+        exit 0 
+      fi
+
+.build_to_dev:
+  stage: build_to_dev
+  image: docker:20.10.16
+  services:
+    - name: registry.hub.docker.com/library/docker:20.10.16-dind
+      alias: docker
+  needs: 
+    - job: tag_validate_dev
+  script:
+    - apk add --no-cache curl jq python3 py3-pip
+    - pip install awscli
+    - aws configure set aws_access_key_id "${LIGHTBIT_GITLAB_KEY}"
+    - aws configure set aws_secret_access_key "${LIGHTBIT_GITLAB_SECRET}"
+    - echo "----Begin assume aws gitlab role----"
+    - ASSUME=$(aws sts assume-role --region "${AWS_REGION}" --role-arn "${GITLAB_DEPLOY_ROLE_ARN}" --role-session-name "Deploy" --query "Credentials")
+    - export AWS_ACCESS_KEY_ID=$(echo $ASSUME | jq -r .AccessKeyId)
+    - export AWS_SECRET_ACCESS_KEY=$(echo $ASSUME | jq -r .SecretAccessKey)
+    - export AWS_SESSION_TOKEN=$(echo $ASSUME | jq -r .SessionToken)
+    - echo "----Begin to build docker image----"
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
+    - cat build_artifact.txt
+    - TAG=$(cat build_artifact.txt)
+    - docker build -t $REPO_NAME:$TAG_NAME$TAG .
+    - docker tag $REPO_NAME:$TAG_NAME$TAG $REGISTRY/$REPO_NAME:$TAG_NAME$TAG
+    - docker push $REGISTRY/$REPO_NAME:$TAG_NAME$TAG
+    # Clean digest
+    - docker rmi $REPO_NAME:$TAG_NAME$TAG
+    - docker rmi $REGISTRY/$REPO_NAME:$TAG_NAME$TAG
+  artifacts:
+    paths:
+      - build_artifact.txt
+
+.build_to_staging:
+  stage: build_to_staging
+  image: docker:20.10.16
+  services:
+    - name: registry.hub.docker.com/library/docker:20.10.16-dind
+      alias: docker
+  needs: 
+    - job: tag_validate_staging
+  script:
+    - apk add --no-cache curl jq python3 py3-pip
+    - pip install awscli
+    - aws configure set aws_access_key_id "${LIGHTBIT_GITLAB_KEY}"
+    - aws configure set aws_secret_access_key "${LIGHTBIT_GITLAB_SECRET}"
+    - echo "----Begin assume aws gitlab role----"
+    - ASSUME=$(aws sts assume-role --region "${AWS_REGION}" --role-arn "${GITLAB_DEPLOY_ROLE_ARN}" --role-session-name "Deploy" --query "Credentials")
+    - export AWS_ACCESS_KEY_ID=$(echo $ASSUME | jq -r .AccessKeyId)
+    - export AWS_SECRET_ACCESS_KEY=$(echo $ASSUME | jq -r .SecretAccessKey)
+    - export AWS_SESSION_TOKEN=$(echo $ASSUME | jq -r .SessionToken)
+    - echo "----Begin to build docker image----"
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $NEW_REGISTRY
+    - cat build_artifact.txt
+    - STAGING_TAG=$(cat build_artifact.txt)
+    - docker build -t $REPO_NAME:$STAGING_TAG_NAME$STAGING_TAG .
+    - docker tag $REPO_NAME:$STAGING_TAG_NAME$STAGING_TAG $NEW_REGISTRY/$REPO_NAME:$STAGING_TAG_NAME$STAGING_TAG
+    - docker push $NEW_REGISTRY/$REPO_NAME:$STAGING_TAG_NAME$STAGING_TAG
+    # Clean digest
+    - docker rmi $REPO_NAME:$STAGING_TAG_NAME$STAGING_TAG
+    - docker rmi $NEW_REGISTRY/$REPO_NAME:$STAGING_TAG_NAME$STAGING_TAG
+  artifacts:
+    paths:
+      - build_artifact.txt
+
+.build_to_prod:
+  stage: build_to_prod
+  image: docker:20.10.16
+  services:
+    - name: registry.hub.docker.com/library/docker:20.10.16-dind
+      alias: docker
+  script:
+    - apk add --no-cache curl jq python3 py3-pip
+    - pip install awscli
+    - aws configure set aws_access_key_id "${LIGHTBIT_GITLAB_KEY}"
+    - aws configure set aws_secret_access_key "${LIGHTBIT_GITLAB_SECRET}"
+    - echo "----Begin assume aws gitlab role----"
+    - ASSUME=$(aws sts assume-role --region "${AWS_REGION}" --role-arn "${GITLAB_DEPLOY_ROLE_ARN}" --role-session-name "Deploy" --query "Credentials")
+    - export AWS_ACCESS_KEY_ID=$(echo $ASSUME | jq -r .AccessKeyId)
+    - export AWS_SECRET_ACCESS_KEY=$(echo $ASSUME | jq -r .SecretAccessKey)
+    - export AWS_SESSION_TOKEN=$(echo $ASSUME | jq -r .SessionToken)
+    - echo "----Begin to build docker image----"
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $NEW_REGISTRY
+    - docker build -t $REPO_NAME:$PROD_TAG_NAME$PROD_TAG .
+    - docker tag $REPO_NAME:$PROD_TAG_NAME$PROD_TAG $NEW_REGISTRY/$REPO_NAME:$PROD_TAG_NAME$PROD_TAG
+    - docker push $NEW_REGISTRY/$REPO_NAME:$PROD_TAG_NAME$PROD_TAG
+    # Clean digest
+    - docker rmi $REPO_NAME:$PROD_TAG_NAME$PROD_TAG
+    - docker rmi $NEW_REGISTRY/$REPO_NAME:$PROD_TAG_NAME$PROD_TAG
+
+.image_scan:
+  stage: image_scan
+  image: alpine/k8s:1.20.7
+  script:
+    - aws configure set aws_access_key_id "${GITLAB_ROLE_ID}"
+    - aws configure set aws_secret_access_key "${GITLAB_ROLE_SECRET}"
+    - echo "----Begin assume aws gitlab role----"
+    - ASSUME=$(aws sts assume-role --region "${AWS_REGION}" --role-arn "${DEPLOY_ROLE_ARN}" --role-session-name "Deploy" --query "Credentials")
+    - export AWS_ACCESS_KEY_ID=$(echo $ASSUME | jq -r .AccessKeyId)
+    - export AWS_SECRET_ACCESS_KEY=$(echo $ASSUME | jq -r .SecretAccessKey)
+    - export AWS_SESSION_TOKEN=$(echo $ASSUME | jq -r .SessionToken)
+    - echo "----Started Image Scanning----"
+    - aws ecr start-image-scan --repository-name $REPO_NAME --image-id imageTag=$TAG_NAME$TAG_SHA
+    - aws ecr wait image-scan-complete --repository-name $REPO_NAME --image-id imageTag=$TAG_NAME$TAG_SHA
+    - SCAN_SUM=$(aws ecr describe-image-scan-findings --repository-name $REPO_NAME --image-id imageTag=$TAG_NAME$TAG_SHA | jq '.imageScanFindings.findingSeverityCounts')
+    - CRITICAL=$(echo $SCAN_SUM | jq '.CRITICAL') && HIGH=$(echo $SCAN_SUM | jq '.HIGH')
+    - >
+      if [ $CRITICAL != null ] || [ $HIGH != null ]; then
+        echo "This image contains vulnerabilities at CRITICAL or HIGH level"
+        exit 1
+      else
+        echo "ECR scan completed without CRITICAL or HIGH vulnerabilities"
+      fi
+
+.code_deliver_to_dev:
+  stage: code_deliver_to_dev
+  image: alpine/k8s:1.26.0
+  needs: 
+    - job: build_to_dev
+    - artifact: build_artifact.txt/
+  script:
+    - apk add --no-cache curl jq python3 py3-pip
+    - pip install awscli
+    # Authen
+    - aws configure set aws_access_key_id "${LIGHTBIT_GITLAB_KEY}"
+    - aws configure set aws_secret_access_key "${LIGHTBIT_GITLAB_SECRET}"
+    - echo "----Begin assume aws gitlab role----"
+    - ASSUME=$(aws sts assume-role --region "${AWS_REGION}" --role-arn "${GITLAB_DEPLOY_ROLE_ARN}" --role-session-name "Deploy" --query "Credentials")
+    - export AWS_ACCESS_KEY_ID=$(echo $ASSUME | jq -r .AccessKeyId)
+    - export AWS_SECRET_ACCESS_KEY=$(echo $ASSUME | jq -r .SecretAccessKey)
+    - export AWS_SESSION_TOKEN=$(echo $ASSUME | jq -r .SessionToken)
+    # Deploy to ecs
+    - cat build_artifact.txt
+    - TAG=$(cat build_artifact.txt)
+    - TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --region "$AWS_REGION")
+    - NEW_TASK_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "$REGISTRY/$REPO_NAME:$TAG_NAME$TAG" '.taskDefinition | .containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.requiresAttributes) | del(.compatibilities) |  del(.registeredAt)  | del(.registeredBy)')
+    - NEW_TASK_INFO=$(aws ecs register-task-definition --region "$AWS_REGION" --cli-input-json "$NEW_TASK_DEFINITION")
+    - NEW_REVISION=$(echo $NEW_TASK_INFO | jq '.taskDefinition.revision')
+    - aws ecs update-service --cluster ${ECS_CLUSTER} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY}:${NEW_REVISION} --region "${AWS_REGION}" 
+
+.code_deliver_to_staging:
+  stage: code_deliver_to_staging
+  image: alpine/k8s:1.26.0
+  needs: 
+    - job: build_to_staging
+    - artifact: build_artifact.txt/
+  script:
+    # Git initial
+    - cat build_artifact.txt
+    - STAGING_TAG=$(cat build_artifact.txt)
+    - git clone https://${GIT_USR}:${GIT_PWD}@gitlab.com/DevOps_Lightnet_Team/lightbit-api.git
+    - git config --global user.name $GIT_USR
+    - git config --global user.email $GIT_EMAIL
+    # SED parameters
+    - sed "s/NAME/$STAGING_TAG_NAME/g;s/TAG/$STAGING_TAG/g" $WORKDIR_STAGING/config/deployment.yaml > $WORKDIR_STAGING/app/deployment.yaml
+    # Create configmap
+    - kubectl -n $NAMESPACE_NONPROD create cm $CONFIGMAP --from-env-file=$WORKDIR_STAGING/config/.env --dry-run=client -o yaml >> $WORKDIR_STAGING/app/deployment.yaml
+    # Git commit
+    - cd $WORKDIR_STAGING
+    - git add .
+    - git commit -m 'Changed tag image'
+    - git push -u origin main
+    - git tag -a $STAGING_TAG -m "Committed version $STAGING_TAG"
+    - git push --tags
+    - echo "Completed to deploy image $STAGING_TAG_NAME$STAGING_TAG on ECR with TAG version $STAGING_TAG on CD repository"
+
+.code_deliver_to_prod:
+  stage: code_deliver_to_prod
+  image: alpine/k8s:1.26.0
+  script:
+    # Git initial
+    - git clone https://${GIT_USR}:${GIT_PWD}@gitlab.com/DevOps_Lightnet_Team/lightbit-api.git
+    - git config --global user.name $GIT_USR
+    - git config --global user.email $GIT_EMAIL
+    # SED parameters
+    - sed "s/NAME/$PROD_TAG_NAME/g;s/TAG/$PROD_TAG/g" $WORKDIR_PROD/config/deployment.yaml > $WORKDIR_PROD/app/deployment.yaml
+    # Create configmap
+    - kubectl -n $NAMESPACE_PROD create cm $CONFIGMAP --from-env-file=$WORKDIR_PROD/config/.env --dry-run=client -o yaml >> $WORKDIR_PROD/app/deployment.yaml
+    # Git commit
+    - cd $WORKDIR_PROD
+    - git add .
+    - git commit -m 'Changed tag image'
+    - git push -u origin main
+    - git tag -a $PROD_TAG -m "Committed version $PROD_TAG"
+    - git push --tags
+    - echo "Completed to deploy image $PROD_TAG_NAME$PROD_TAG on ECR with TAG version $PROD_TAG on CD repository"
