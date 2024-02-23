@@ -1,6 +1,6 @@
-FROM node
+FROM node:18-alpine
 
-WORKDIR /app
+WORKDIR /usr
 
 COPY package.json .
 RUN yarn install
