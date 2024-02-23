@@ -1,0 +1,2 @@
+- name: docker build
+run: docker build test
